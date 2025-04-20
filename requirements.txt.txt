@@ -1,0 +1,10 @@
+Django>=5.2
+PyPDF2
+flashcards_trail1
+flashcard2brainrot
+numpy
+moviepy
+soundfile
+kokoro
+vosk
+python-dotenv
