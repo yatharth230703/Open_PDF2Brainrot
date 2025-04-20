@@ -2,6 +2,8 @@
 
 A Django‑powered web app that lets you upload a PDF, automatically turns each page into a “flashcard” (JSON) plus short “Brainrot” videos, and then provides a slick UI to browse your flashcards side‑by‑side with their videos.
 
+![Image](https://github.com/user-attachments/assets/37ffa6a5-6ef5-498e-8830-3aab27d0303d)
+
 ---
 
 ## 🚀 Features
