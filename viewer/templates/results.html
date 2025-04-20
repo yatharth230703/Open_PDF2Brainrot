@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Results Viewer</title>
+  <style>
+    body { margin:0; height:100vh; display:flex;
+           background:#121212; color:#eee; font-family:sans-serif; }
+    .sidebar { width:200px; background:#1e1e1e; padding:20px;
+               box-sizing:border-box; display:flex; flex-direction:column; gap:10px; }
+    #flashcardButtons { flex:1; display:flex; flex-direction:column;
+                        align-items:center; gap:8px; overflow-y:auto; }
+    .fc-btn { width:36px; height:36px; border-radius:50%; background:#007bff;
+              color:white; border:none; cursor:pointer; display:flex;
+              align-items:center; justify-content:center; font-weight:bold; }
+    .main { flex:1; display:flex; align-items:stretch; justify-content:space-between; }
+    .json-panel { flex:1; min-width:200px; background:#181818; padding:20px;
+                  overflow-y:auto; box-sizing:border-box; }
+    .json-panel h2{margin:1em 0 .3em;border-bottom:1px solid #333;padding-bottom:2px;}
+    .json-panel h3{margin:.8em 0 .2em;}
+    .json-panel ul{margin:0 0 .8em 1.2em;padding:0;}
+    .json-panel li{margin-bottom:.3em;}
+    .video-wrapper{width:500px;padding:20px;box-sizing:border-box;
+                   display:flex;flex-direction:column;align-items:center;}
+    .video-frame{width:440px;height:700px;border:3px solid #444;
+                 overflow:hidden;background:black;position:relative;}
+    .video-frame video{width:100%;height:100%;object-fit:cover;position:relative;}
+    .controls{margin-top:10px;display:flex;gap:20px;}
+    .controls button{padding:8px 16px;background:#007bff;border:none;
+                     color:white;cursor:pointer;border-radius:4px;}
+    .controls button:disabled{background:#555;cursor:default;}
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <h3 style="margin-bottom:10px;">Flashcards</h3>
+    <div id="flashcardButtons">
+     
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="json-panel" id="jsonPanel">
+      <p style="color:#666;font-style:italic;">Click a flashcard on the left.</p>
+    </div>
+    <div class="video-wrapper">
+      <div class="video-frame">
+        <video id="videoPlayer" controls muted></video>
+      </div>
+      <div class="controls">
+        <button id="prevBtn" disabled>Previous</button>
+        <button id="nextBtn" disabled>Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const mapping    = {{ mapping|safe }};
+    const flashcards = {{ flashcards|safe }};
+
+    const flashcardBtns = document.getElementById('flashcardButtons');
+    const jsonPanel     = document.getElementById('jsonPanel');
+    const prevBtn       = document.getElementById('prevBtn');
+    const nextBtn       = document.getElementById('nextBtn');
+    const videoPlayer   = document.getElementById('videoPlayer');
+
+    let current = null, videos = [], idx = 0;
+    flashcards.forEach(name => {
+      const n   = name.split('_')[1];
+      const btn = document.createElement('button');
+      btn.className = 'fc-btn';
+      btn.textContent = n;
+      btn.onclick   = () => selectFlashcard(name);
+      flashcardBtns.appendChild(btn);
+    });
+
+    function selectFlashcard(name) {
+      current = name; idx = 0;
+      fetch(mapping[name].json_url)
+        .then(r=>r.json())
+        .then(data=> renderJSON(data))
+        .catch(()=> jsonPanel.innerHTML = '<p style="color:red;">Failed to load JSON.</p>');
+      videos = mapping[name].video_urls || [];
+      prevBtn.disabled = nextBtn.disabled = (videos.length<2);
+      if (videos.length) loadVideo(0);
+    }
+
+    function renderJSON(obj) {
+      jsonPanel.innerHTML = '';
+      Object.entries(obj).forEach(([h1,sub])=>{
+        const H2 = document.createElement('h2');
+        H2.textContent = h1;
+        jsonPanel.appendChild(H2);
+
+        Object.entries(sub).forEach(([h2,pts])=>{
+          const H3 = document.createElement('h3');
+          H3.textContent = h2;
+          jsonPanel.appendChild(H3);
+
+          const UL = document.createElement('ul');
+          pts.forEach(pt=>{
+            const LI = document.createElement('li');
+            LI.textContent = pt;
+            UL.appendChild(LI);
+          });
+          jsonPanel.appendChild(UL);
+        });
+      });
+    }
+
+    function loadVideo(i) {
+      idx = i;
+      videoPlayer.src = videos[i];
+      videoPlayer.load();
+      videoPlayer.play();
+      videoPlayer.style.transform = 'translateY(0)';
+    }
+
+    function shiftVideo(dir) {
+      const newIdx = dir==='next'
+                   ? Math.min(videos.length-1, idx+1)
+                   : Math.max(0, idx-1);
+      if (newIdx===idx) return;
+      const s = dir==='next'?1:-1;
+      videoPlayer.animate(
+        [{transform:'translateY(0)'},{transform:`translateY(${-s*100}%)`}],
+        {duration:300,easing:'ease',fill:'forwards'}
+      ).onfinish = () => {
+        loadVideo(newIdx);
+        videoPlayer.style.transform = `translateY(${s*100}%)`;
+        videoPlayer.animate(
+          [{transform:`translateY(${s*100}%)`},{transform:'translateY(0)'}],
+          {duration:300,easing:'ease',fill:'forwards'}
+        );
+      };
+    }
+
+    prevBtn.addEventListener('click', ()=> shiftVideo('prev'));
+    nextBtn.addEventListener('click', ()=> shiftVideo('next'));
+  </script>
+
+</body>
+</html>
